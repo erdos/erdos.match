@@ -14,9 +14,9 @@ Include the following in your code:
 
 ## Syntax
 
-Usage of the (match) macro. The first argument is the value to be matched. The following arguments are patterns and bodies. The body for the first matching pattern will be executed.
+Usage of the `(match)` macro. The first argument is the value to be matched. The following arguments are patterns and bodies. The body for the first matching pattern will be executed.
 
-The _ symbol can be used to match any object. Symbols starting with `?` sign will be used as names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for binding and all other occurences are for equality checking. Thus, you can check for repeating parts in your pattern.
+The `_` symbol can be used to match any object. Symbols starting with `?` sign will be used as names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for binding and all other occurences are for equality checking. Thus, you can check for repeating parts in your pattern.
 
 All other symbols will be handled as concrete objects for matching.
 
@@ -26,13 +26,14 @@ The `[]` notation is for matching vectors and `()` is for matching lists. They a
 
 ### simple value matching
 
-When matching for simple values, the pattern will be compiled for a (case) expression.
+When matching for simple values, the pattern will be compiled for a `(case)` expression.
 ```clojure
 (match a
    1       :one,
    2       :two,
    "three" :three,
    ?a      (str "value: " ?a))
+;; a=1 => :one, a=2 => :two, a="three" => :three, etc..
 ```
 
 ### vectors
@@ -45,6 +46,7 @@ It is possible to match vectors and lists by length.
    [_ _]   2,
    [_ _ _] 3,
    [& _]   :many)
+;; when a=[] => 0, a=[5] => 1, a=[4 5] => 2, etc..
 ```
 
 Or combining the previous two:
@@ -53,6 +55,7 @@ Or combining the previous two:
    [:t _] :t,
    [_ :t] :t,
    [_ _]  :f)
+;; when a=[:t :t] => :t, a=[:f :t] => :t, etc..
 ```
 
 You can also refer to previously matched values.
@@ -60,6 +63,7 @@ You can also refer to previously matched values.
 (match a
    [?a ?a] (str ?a "=" ?a)
    [?a ?b] (str ?a "/=" ?b))
+;; when a=[1 1] => "1=1", a=[1 2]=>"1/=2", etc..
 ```
 
 ### for analyzing clojure code
@@ -79,8 +83,20 @@ Checking for symbols and lists is possible. Please note the different syntax for
        ^String  ?a :string
        ^Long    ?a :long
        _ :unknown)
+;; => :string
 ```
 Cool eeh?
+
+### Guard functions
+
+Match even numbers.
+
+```clojure
+(match 24
+   ^{:guard even?} ?e :even
+   _                  :odd)
+;; => :even
+```
 
 ## License
 
