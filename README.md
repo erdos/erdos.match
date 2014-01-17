@@ -12,6 +12,16 @@ Include the following in your code:
 (use '[erdos.match :only (match)])
 ```
 
+## Syntax
+
+Usage of the (match) macro. The first argument is the value to be matched. The following arguments are patterns and bodies. The body for the first matching pattern will be executed.
+
+The _ symbol can be used to match any object. Symbols starting with `?` sign will be used as names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for binding and all other occurences are for equality checking. Thus, you can check for repeating parts in your pattern.
+
+All other symbols will be handled as concrete objects for matching.
+
+The `[]` notation is for matching vectors and `()` is for matching lists. They are not interchangeable. The `&` sign is used for matching the remaining part of the sequence.
+
 ## Examples
 
 ### simple value matching
