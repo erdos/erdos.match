@@ -33,12 +33,28 @@ It is possible to match vectors and lists by length.
 ```
 
 Or combining the previous two:
-```
+```clojure
 (match a
    [:t _] :t
    [_ :t] :t
    [_ _]  :f)
 ```
+
+You can also refer to previously matched values.
+```clojure
+(match a
+   [?a ?a] (str ?a "=" ?a)
+   [?a ?b] (str ?a "/=" ?b))
+```
+
+Also, checking for symbols and lists is possible. Please note the different syntax for lists and vectors.
+```clojure
+(match a
+   (if ?cond ?then ?else) (str "if-expression")
+   (when ?cond & ?then)   (str "when-expr")
+   _                      :unexpected)
+```
+
 
 ## License
 
