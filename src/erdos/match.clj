@@ -33,8 +33,11 @@
   (letfn [(-sym [pat rsn]
             (cond
              (= '_ pat)                 []
-             (= \? (-> pat name first)) [[:?= pat rsn]]
-             :otherwise                 [[:guard `(= '~pat ~rsn)]]))
+             (= \? (-> pat name first))
+             (concat (if-let [t (-> pat meta :tag)]
+                       [[:guard `(instance? ~t ~rsn)]])
+                     [[:?= (with-meta pat {}) rsn]])
+             :otherwise [[:guard `(= '~pat ~rsn)]]))
           (-const [pat rsn]     [[:guard `(= ~pat ~rsn)]])
           (-vec-itm [rsn l2 i k]
             (if-not (= k '_)
@@ -179,7 +182,5 @@
   "Use this macro for patterns matching."
   [expr & clauses]
   (apply match* expr clauses))
-
-
 
 :OK

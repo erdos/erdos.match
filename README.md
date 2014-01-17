@@ -2,6 +2,8 @@
 
 A simple clojure library for pattern matching.
 
+Patterns will be simplified and compiled to clojure code.
+
 ## Usage
 
 Copy the match.clj file to your src/erdos folder.
@@ -59,6 +61,16 @@ Checking for symbols and lists is possible. Please note the different syntax for
    _                      :unexpected)
 ```
 
+### Type matching
+
+```clojure
+(match "what is this?"
+       ^Integer ?a :int
+       ^String  ?a :string
+       ^Long    ?a :long
+       _ :unknown)
+```
+Cool eeh?
 
 ## License
 

@@ -54,8 +54,20 @@
         ))
   (testing "simplify (if) forms to (cond)"))
 
+(comment
+  (eval
+   (match- "asd"
+           ^Integer ?a :int
+           ^String ?a :string
+           ^Long ?a :long))
+
+  (type ^int 'a)
+  (-> ^int 'a meta )
+
+  (isa? 12 int)
 
 
 
 
-:OK
+
+  :OK)
