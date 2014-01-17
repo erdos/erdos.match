@@ -36,6 +36,8 @@
              (= \? (-> pat name first))
              (concat (if-let [t (-> pat meta :tag)]
                        [[:guard `(instance? ~t ~rsn)]])
+                     (if-let [g (-> pat meta :guard)]
+                       [[:guard `(~g ~rsn)]])
                      [[:?= (with-meta pat {}) rsn]])
              :otherwise [[:guard `(= '~pat ~rsn)]]))
           (-const [pat rsn]     [[:guard `(= ~pat ~rsn)]])
@@ -57,6 +59,16 @@
                  (mapcat (partial -vec-itm rsn l2)
                          (range), (seq pat))
                  [:guard `(= (count ~rsn) ~(count pat))]))))
+          (-map [pat rsn]
+            (let [l2 (gensym "m")]
+                (conj
+                 (mapcat
+                  (fn [[k v]] (conj (-match v l2)
+                                   [:= l2 `(get ~rsn ~k)]
+                                   [:guard `(contains? ~rsn ~k)]))
+                         (seq pat))
+                 [:guard `(map? ~rsn)]
+                 )))
           (-vec [pat rsn]
             (conj (-handle-seq pat rsn)
                   [:guard `(vector? ~rsn)]))
@@ -72,6 +84,7 @@
              (vector? pat)  (-vec pat rsn)
              (string? pat)  (-const pat rsn)
              (list? pat)    (-list pat rsn)
+             (map? pat)     (-map pat rsn)
              ;(set? pat)
              ;(map? pat)
              ))]

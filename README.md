@@ -22,6 +22,8 @@ All other symbols will be handled as concrete objects for matching.
 
 The `[]` notation is for matching vectors and `()` is for matching lists. They are not interchangeable. The `&` sign is used for matching the remaining part of the sequence.
 
+Values in maps can be matched by keys. For example, pattern {:a ?a} matches {:a 1} object by binding 1 to a.
+
 ## Examples
 
 ### simple value matching
@@ -64,6 +66,14 @@ You can also refer to previously matched values.
    [?a ?a] (str ?a "=" ?a)
    [?a ?b] (str ?a "/=" ?b))
 ;; when a=[1 1] => "1=1", a=[1 2]=>"1/=2", etc..
+```
+
+### maps
+```clojure
+(match {:a [1 2 3] :b 2 :c 3}
+   {:a [?a1 ?a2 ?a3]} (+ ?a1 ?a2 ?a3)
+   _                  :f)
+;; => 6
 ```
 
 ### for analyzing clojure code

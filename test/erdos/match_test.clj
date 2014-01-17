@@ -54,20 +54,29 @@
         ))
   (testing "simplify (if) forms to (cond)"))
 
+(deftest test-match-type
+  (testing "basic type matching"
+    (are [r x] (= x (match r ^Long ?a :long, ^String ?a :string))
+         "Dolorem" :string,
+         12        :long,
+         'sdf       nil)))
+
+(deftest test-match-map
+  (testing "basic match"
+    (are [x y] (= x (match y {:a ?a} (str "a:" ?a), {:b ?b} (str "b:" ?b), _ :f))
+         "b:1" {:b 1}
+         "a:2" {:a 2}
+         :f   {:c 3})))
+
 (comment
-  (eval
-   (match- "asd"
+   (match "asd"
            ^Integer ?a :int
            ^String ?a :string
-           ^Long ?a :long))
-
-  (type ^int 'a)
-  (-> ^int 'a meta )
-
-  (isa? 12 int)
+           ^Long ?a :long)
 
 
-
-
+   (match {:a 1 :b 2 :c [1 2]}
+          {:a ?a :b ?b :c [1 ?c]} [?a ?b ?c]
+          _ :else)
 
   :OK)
