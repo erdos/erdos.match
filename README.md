@@ -6,8 +6,6 @@ Patterns will be simplified and compiled to clojure code.
 
 **TOC** [Usage](#usage) | [Syntax](#syntax) | [Examples](#examples) | [License](#license)
 
-{:toc}
-
 ## Usage
 
 Copy the match.clj file to your src/erdos folder.
