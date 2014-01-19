@@ -16,7 +16,9 @@ Include the following in your code:
 
 Usage of the `(match)` macro. The first argument is the value to be matched. The following arguments are patterns and bodies. The body for the first matching pattern will be executed.
 
-The `_` symbol can be used to match any object. Symbols starting with `?` sign will be used as names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for binding and all other occurences are for equality checking. Thus, you can check for repeating parts in your pattern.
+The `_` symbol can be used to match any object. Symbols starting with `?` sign will be used as var names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for binding and all other occurences are for equality checking. Thus, you can check for repeating parts in your pattern.
+
+You can add type matching using the `:tag` meta info on var names. For example, `^Integer ?i` matches an Integer value and binds it to var `?i`. You can also add guard functions using the `:guard` meta map key. For example, the pattern `^{:guard even?} ?i` will match even numbers. Please note, you can not use meta info on the `_` symbol.
 
 All other symbols will be handled as concrete objects for matching.
 
