@@ -6,10 +6,7 @@ Patterns will be simplified and compiled to clojure code.
 
 ## TOC
 
-* [Usage](#usage)
-* [Syntax](#syntax)
-* [Examples](#examples)
-* [License](#license)
+| [Usage](#usage) | [Syntax](#syntax) | [Examples](#examples) | [License](#license) |
 
 ## Usage
 
