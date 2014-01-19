@@ -94,8 +94,6 @@
 (defmethod opcode :==
   ([[_ n v] then]      `(if (= ~n ~v) ~then))
   ([[_ n v] then else] `(if (= ~n ~v) ~then ~else)))
-(defmethod opcode :=nth
-  [[_ n v i] & body]   `(let [~n (nth ~v ~i)] ~@body))
 (defmethod opcode :guard
   [[_ e] then]         `(if ~e ~then))
 
