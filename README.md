@@ -110,6 +110,10 @@ Match even numbers.
 ;; => :even
 ```
 
+### Pattern compiling
+
+To check out the compiled pattern, use the `match-pattern` function or the `match-pattern*` macro.
+
 ## License
 
 Copyright © 2014 Janos Erdos
