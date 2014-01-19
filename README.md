@@ -4,6 +4,13 @@ A simple clojure library for pattern matching.
 
 Patterns will be simplified and compiled to clojure code.
 
+## TOC
+
+* [Usage](#usage)
+* [Syntax](#syntax)
+* [Examples](#examples)
+* [License](#license)
+
 ## Usage
 
 Copy the match.clj file to your src/erdos folder.
