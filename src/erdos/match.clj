@@ -2,15 +2,16 @@
   erdos.match
   "Small library for generating pattern matching code.")
 
+
 (comment
-  TODO
+  "TODO
   map matching, set matching <?>
   map matching for pojo/beans
   vector matching for array access
-  all object - type tag
-  all object - guard fns
+  all object - type tag, guard fns
   lisp code simplification work in progress
-)
+  /TODO")
+
 
 (defn- reverse-series
   "Reverse list of opcodes and change :?= to := or :=="
@@ -27,12 +28,13 @@
         (assoc acc :res (cons `[~code ~@args] (:res acc)))))
     {:res nil, :syms #{}} series)))
 
+
 (defn- make-series
   "Analyze pattern object and produce a list of opcodes."
   [pat root-sym]
-  (letfn [(-sym [pat rsn]
+  (letfn [(-sym     [pat rsn]
             (cond
-             (= '_ pat)                 []
+             (= '_ pat)         []
              (= \? (-> pat name first))
              (concat (if-let [t (-> pat meta :tag)]
                        [[:guard `(instance? ~t ~rsn)]])
@@ -40,10 +42,9 @@
                        [[:guard `(~g ~rsn)]])
                      [[:?= (with-meta pat {}) rsn]])
              :otherwise [[:guard `(= '~pat ~rsn)]]))
-          (-const [pat rsn]     [[:guard `(= ~pat ~rsn)]])
-          (-vec-itm [rsn l2 i k]
-            (if-not (= k '_)
-              (cons [:=nth l2 rsn i] (-match k l2))))
+          (-const   [pat rsn]   `([:guard (= ~pat ~rsn)]))
+          (-seq-itm [rsn l2 i k]
+            (if-not (= k '_) `([:= ~l2 (nth ~rsn ~i)] ~@(-match k l2))))
           (-handle-seq [pat rsn]
             (let [l2 (gensym "v")]
               (if (= '& (last (butlast pat)))
@@ -51,44 +52,40 @@
                   (assert (symbol? (last pat))
                           "Vararg name must be a symbol.")
                   (conj
-                   (mapcat (partial -vec-itm rsn l2)
+                   (mapcat (partial -seq-itm rsn l2)
                            (range), (-> pat butlast butlast))
                    [:?= (last pat) `(nthrest ~rsn ~(-> pat count dec dec))]
                    [:guard `(>= (count ~rsn) ~(-> pat count dec dec))]))
                 (conj
-                 (mapcat (partial -vec-itm rsn l2)
+                 (mapcat (partial -seq-itm rsn l2)
                          (range), (seq pat))
                  [:guard `(= (count ~rsn) ~(count pat))]))))
           (-map [pat rsn]
             (let [l2 (gensym "m")]
-                (conj
+                (cons [:guard `(map? ~rsn)]
                  (mapcat
-                  (fn [[k v]] (conj (-match v l2)
-                                   [:= l2 `(get ~rsn ~k)]
-                                   [:guard `(contains? ~rsn ~k)]))
-                         (seq pat))
-                 [:guard `(map? ~rsn)]
-                 )))
+                  (fn [[k v]] `[[:guard (contains? ~rsn ~k)]
+                               [:= ~l2 (get ~rsn ~k)]
+                               ~@(-match v l2)])
+                  (seq pat)))))
           (-vec [pat rsn]
-            (conj (-handle-seq pat rsn)
-                  [:guard `(vector? ~rsn)]))
+            `([:guard (vector? ~rsn)] ~@(-handle-seq pat rsn)))
           (-list [pat rsn]
-            (conj (-handle-seq pat rsn)
-                  [:guard `(seq? ~rsn)]))
+            `([:guard (seq? ~rsn)] ~@(-handle-seq pat rsn)))
           (-match [pat rsn]
             (cond
+             (vector? pat)  (-vec pat rsn)
+             (keyword? pat) (-const pat rsn)
+             (map? pat)     (-map pat rsn)
              (symbol? pat)  (-sym pat rsn)
              (number? pat)  (-const pat rsn)
              (char? pat)    (-const pat rsn)
-             (keyword? pat) (-const pat rsn)
-             (vector? pat)  (-vec pat rsn)
              (string? pat)  (-const pat rsn)
              (list? pat)    (-list pat rsn)
-             (map? pat)     (-map pat rsn)
-             ;(set? pat)
-             ;(map? pat)
-             ))]
+             :otherwise     (-> "Unexpected pattern: " (str pat)
+                                IllegalArgumentException. throw)))]
     (-match pat root-sym)))
+
 
 ;; process generated op code.
 (defmulti ^:private opcode (fn [op & _] (first op)))
@@ -102,15 +99,15 @@
 (defmethod opcode :guard
   [[_ e] then]         `(if ~e ~then))
 
+
 (defn- compile-series
   "Compile ser list of opcodes to clj code."
   [ser body]
-   (reduce
-    (fn [acc op]
-      (opcode op acc))
-    body, (reverse-series ser)))
+   (reduce (fn [acc op] (opcode op acc))
+           body, (reverse-series ser)))
 
-(defn merge-sexp
+
+(defn- merge-sexp
   "Join expressions by merging similiar outer if-else branches."
   [a b]
   (or
@@ -128,72 +125,75 @@
 
    (when (= 'clojure.core/or (first a))
      `(or ~@(rest a) ~b))
+
    (when (= 'clojure.core/or (first b))
      `(or ~a ~@(rest b)))
 
    `(or ~a ~b)))
 
-(defn- match0*
+
+(defn- match0-pattern
   "Returns the generated code for the clauses"
   [value & clauses]
   (assert (-> clauses count even?))
   (let [vsym (gensym "MC")
         cls  (partition 2 clauses) ;; [pattern action]*
         cls  (map (fn [[p c]] [(make-series p vsym) c]) cls) ;; [pcode action]*
-        cls  (map (fn [[p c]]  (compile-series p [c])) cls)
-        ]
+        cls  (map (fn [[p c]] (compile-series p [c])) cls)]
     `(first
       (let [~vsym ~value]
         ~(reduce merge-sexp cls)))))
 
-(defmacro match0-
-  "debug: macro form of match*"
-  [value & clauses]
-  `'~(apply match0* value clauses))
 
 (defmacro match0 [value & clauses]
-  (apply match0* value clauses))
+  (apply match0-pattern value clauses))
+
+
+(defn- simplify-sexp-item
+  [sexp]
+  (match0 sexp
+          (or & ?ops)
+          `(or ~@(mapcat #(match0 %, (clojure.core/or & ?xs) ?xs,
+                                  (or & ?xs) ?xs, ?x [?x]) ?ops))
+
+          (if (= ?a ?x1) ?a1 (if (= ?a ?x2) ?a2 ?a3))
+          `(case ~?a, ~?x1 ~?a1, ~?x2 ~?a2, ~?a3)
+
+          (if (= ?a ?x1) ?a1 (clojure.core/case ?a & ?as))
+          `(case ~?a, ~?x1 ~?a1, ~@?as)
+
+          (clojure.core/let [?k ?v]
+            (clojure.core/let [& ?as] ?body))
+          `(let [~?k ~?v ~@?as] ~?body)
+
+          ?else ?else))
+
 
 (defn simplify-sexp
   "Simplify clojure code, eg.:
    merges if statements to case,
    nested or exprs to simple one,
    nested let's to simple one"
-  [sexp]
-  (clojure.walk/postwalk
-   (fn [x]
-     (match0 x
-             ;; (or (or a b) (or c d)) -> (or a b c d)
-             (or & ?ops)
-             `(or ~@(mapcat #(match0 %, (clojure.core/or & ?xs) ?xs,
-                                     (or & ?xs) ?xs, ?x [?x]) ?ops))
+  [sexp] (clojure.walk/postwalk simplify-sexp-item sexp))
 
-             (if (= ?a ?x1) ?a1 (if (= ?a ?x2) ?a2 ?a3))
-             `(case ~?a, ~?x1 ~?a1, ~?x2 ~?a2, ~?a3)
 
-             (if (= ?a ?x1) ?a1 (clojure.core/case ?a & ?as))
-             `(case ~?a, ~?x1 ~?a1, ~@?as)
-
-             (clojure.core/let [?k ?v]
-               (clojure.core/let [& ?as] ?body))
-             `(let [~?k ~?v ~@?as] ~?body)
-
-             ?else ?else))
-   sexp))
-
-(defn match*
+(defn match-pattern
   "Produce clj code for pattern matching"
   [expr & clauses]
-  (simplify-sexp (apply match0* expr clauses)))
+  (simplify-sexp
+   (apply match0-pattern expr clauses)))
 
-(defmacro match-
-  "Macro form of match* fn"
+
+(defmacro match-pattern*
+  "Macro form of match-pattern fn"
   [expr & clauses]
-  `'~(apply match* expr clauses))
+  `'~(apply match-pattern expr clauses))
+
 
 (defmacro match
   "Use this macro for patterns matching."
   [expr & clauses]
-  (apply match* expr clauses))
+  (apply match-pattern expr clauses))
+
 
 :OK
