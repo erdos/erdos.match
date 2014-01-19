@@ -4,8 +4,6 @@ A simple clojure library for pattern matching.
 
 Patterns will be simplified and compiled to clojure code.
 
-**TOC** [Usage](#usage) | [Syntax](#syntax) | [Examples](#examples) | [License](#license)
-
 ## Usage
 
 Copy the match.clj file to your src/erdos folder.
@@ -16,37 +14,110 @@ Include the following in your code:
 
 ## Syntax
 
-Usage of the `(match)` macro. The first argument is the value to be matched. The following arguments are patterns and bodies. The body for the first matching pattern will be executed.
+The `(match)` macro is used for pattern matching. The first argument is the value to be matched. The following arguments are patterns and bodies. Only the branch for the first matching pattern will be executed. When no pattern is matched, nil value is returned.
 
-The `_` symbol can be used to match **any object** and null values. Symbols starting with `?` sign will be used as var names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for *binding* and all other occurences are for *equality checking*. Thus, you can check for repeating parts in your pattern.
+**example**
 
-You can add **type matching** using the `:tag` meta info on var names. For example, `^Integer ?i` matches an Integer value and binds it to var `?i`. You can also add **guard functions** using the `:guard` meta map key. For example, the pattern `^{:guard even?} ?i` will match even numbers. Please note, you can not use meta info on the `_` symbol.
+```clojure
+(match expression-to-match
+  pattern-1   branch-1
+  pattern-2   branch-2
+  ;...
+  pattern-n   branch-n)
+```
 
-All other symbols will be handled as concrete objects for matching.
+### Constant values
 
-The `[]` notation is for matching **vectors** and `()` is for matching **lists**. They are not interchangeable. The `&` sign is used for matching the *remaining part* of the vector or list.
+Numbers, string, symbols and keywords are supported.
 
-Values in **maps** can be matched by keys. For example, pattern `{:a ?a}` matches `{:a 1}` object by binding value 1 to var ?a.
+**example**
 
-It is also possible to match for expressions calculated at compile time or at run time. For **compile-time matching**, use the `~` prefix. For example: `~true` matches for the value true, whereas `true` will match for the symbol 'true. For **run-time matching**, use the `@` prefix. You can also use the names of already matched var names in this expression.
-
-## Examples
-
-### simple value matching
-
-When matching for simple values, the pattern will be compiled for a `(case)` expression.
 ```clojure
 (match a
-   1       :one,
-   2       :two,
-   "three" :three,
-   ?a      (str "value: " ?a))
-;; a=1 => :one, a=2 => :two, a="three" => :three, etc..
+  :first  :keyword
+  second  :symbol
+  "third" :string
+  4       :number)
+;; a=4 => :number, a='second => :symbol, etc..
 ```
+
+### Vectors and lists
+
+The `[]` notation is for matching vectors and `()` is for matching lists and seqs. They are not interchangeable. The `&` sign is used for matching the remaining part of the vector or list.
+
+**example**
+
+```clojure
+(match a
+  []    :empty-vect
+  ()    :empty-list
+  [_]   :vec1
+  [& _] :vect-many
+  (_)   :list-1
+  (& _) :list-many)
+;; a=[] => :empty-vect, a=(3) => :vec1, etc..
+```
+
+### Maps
+
+Values in maps can be matched by keys. For example, pattern `{:a ?a}` matches `{:a 1}` object by binding value 1 to var ?a.
+
+**example**
+
+```clojure
+(match a
+  {:a ?a, :b ?b} (str "a=" ?a " b=" ?b)
+  {:a _}         "only :a is given"
+  {:b _}         "only :b is given"
+  {}             "neither :a nor :b given"
+  _              "it is not even a map.")
+```
+
+### Binding values
+
+The `_` symbol can be used to match any object and null values. Symbols starting with `?` sign will be used as var names for capturing objects. (They can also be used for type matching, see examples.) The first occurence of the symbol is used for *binding* and all other occurences are for *equality checking*. Thus, you can check for repeating parts in your pattern.
+
+### Type matching
+
+You can add type matching using the `:tag` meta info on var names. For example, `^Integer ?i` matches an Integer value and binds it to var `?i`.
+
+**example**
+
+```clojure
+(match "what is this?"
+       ^Integer ?a :int
+       ^String  ?a :string
+       ^Long    ?a :long
+       _ :unknown)
+;; => :string
+```
+
+### Guard functions
+
+You can also add guard functions using the `:guard` meta map key. For example, the pattern `^{:guard even?} ?i` will match even numbers. Please note, you can not use meta info on the `_` symbol. All other symbols will be handled as concrete objects for matching.
+
+
+**example**
+
+Match even numbers.
+
+```clojure
+(match 24
+   ^{:guard even?} ?e :even
+   _                  :odd)
+;; => :even
+```
+
+### Run-time and compile-time expressions
+
+It is also possible to match for expressions calculated at compile time or at run time. For compile-time matching, use the `~` prefix. For example: `~true` matches for the value true, whereas `true` will match for the symbol 'true. For run-time matching, use the `@` prefix. You can also use the names of already matched var names in this expression.
+
+## More examples
 
 ### vectors
 
-It is possible to match vectors and lists by length.
+Match the vector by the number of elements
+
 ```clojure
 (match a
    []      0,
@@ -57,16 +128,17 @@ It is possible to match vectors and lists by length.
 ;; when a=[] => 0, a=[5] => 1, a=[4 5] => 2, etc..
 ```
 
-Or combining the previous two:
+Logical OR operator
+
 ```clojure
 (match a
-   [:t _] :t,
-   [_ :t] :t,
-   [_ _]  :f)
-;; when a=[:t :t] => :t, a=[:f :t] => :t, etc..
+   [~nil ?a]   ?a,
+   [~false ?a] ?a,
+   [?a _]      ?a)
 ```
 
 You can also refer to previously matched values.
+
 ```clojure
 (match a
    [?a ?a] (str ?a "=" ?a)
@@ -74,44 +146,14 @@ You can also refer to previously matched values.
 ;; when a=[1 1] => "1=1", a=[1 2]=>"1/=2", etc..
 ```
 
-### maps
-```clojure
-(match {:a [1 2 3] :b 2 :c 3}
-   {:a [?a1 ?a2 ?a3]} (+ ?a1 ?a2 ?a3)
-   _                  :f)
-;; => 6
-```
-
 ### for analyzing clojure code
+
 Checking for symbols and lists is possible. Please note the different syntax for lists and vectors.
 ```clojure
 (match a
    (if ?cond ?then ?else) (str "if-expression")
    (when ?cond & ?then)   (str "when-expr")
    _                      :unexpected)
-```
-
-### Type matching
-
-```clojure
-(match "what is this?"
-       ^Integer ?a :int
-       ^String  ?a :string
-       ^Long    ?a :long
-       _ :unknown)
-;; => :string
-```
-Cool eeh?
-
-### Guard functions
-
-Match even numbers.
-
-```clojure
-(match 24
-   ^{:guard even?} ?e :even
-   _                  :odd)
-;; => :even
 ```
 
 ### compile time expressions
