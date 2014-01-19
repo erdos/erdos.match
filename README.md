@@ -22,7 +22,7 @@ All other symbols will be handled as concrete objects for matching.
 
 The `[]` notation is for matching vectors and `()` is for matching lists. They are not interchangeable. The `&` sign is used for matching the remaining part of the sequence.
 
-Values in maps can be matched by keys. For example, pattern {:a ?a} matches {:a 1} object by binding 1 to a.
+Values in maps can be matched by keys. For example, pattern `{:a ?a}` matches `{:a 1}` object by binding value 1 to var ?a.
 
 ## Examples
 
