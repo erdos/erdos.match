@@ -114,6 +114,30 @@ Match even numbers.
 
 To check out the compiled pattern, use the `match-pattern` function or the `match-pattern*` macro.
 
+For example, the following code..
+```clojure
+(match-pattern
+   "asd"
+   ^Integer ?i (str ?i "is and int")
+   ^String ?s (str ?s "is a string")
+   ^Long ?l   (str ?l "is a long"))
+```
+..will compile to something like this:
+```clojure
+(clojure.core/first
+  (clojure.core/let [MC23818 "asd"]
+     (clojure.core/or
+        (if (clojure.core/instance? Integer MC23818)
+           (clojure.core/let [?i MC23818]
+              [(str ?i "is and int")]))
+        (if (clojure.core/instance? String MC23818)
+           (clojure.core/let [?s MC23818]
+              [(str ?s "is a string")]))
+        (if (clojure.core/instance? Long MC23818)
+           (clojure.core/let [?l MC23818]
+              [(str ?l "is a long")])))))
+```
+
 ## License
 
 Copyright © 2014 Janos Erdos
