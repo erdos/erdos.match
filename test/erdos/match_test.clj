@@ -69,11 +69,10 @@
          :f   {:c 3})))
 
 (comment
-   (match "asd"
+   (match-pattern* "asd"
            ^Integer ?a :int
            ^String ?a :string
            ^Long ?a :long)
-
 
    (match {:a 1 :b 2 :c [1 2]}
           {:a ?a :b ?b :c [1 ?c]} [?a ?b ?c]

@@ -150,6 +150,7 @@
 
 
 (defn- simplify-sexp-item
+  "Simplify a sexp, eg.: merge (if) forms, etc."
   [sexp]
   (match0 sexp
           (or & ?ops)
@@ -170,10 +171,7 @@
 
 
 (defn simplify-sexp
-  "Simplify clojure code, eg.:
-   merges if statements to case,
-   nested or exprs to simple one,
-   nested let's to simple one"
+  "Recursively simplify sexp."
   [sexp] (clojure.walk/postwalk simplify-sexp-item sexp))
 
 
