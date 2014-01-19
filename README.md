@@ -28,6 +28,8 @@ The `[]` notation is for matching **vectors** and `()` is for matching **lists**
 
 Values in **maps** can be matched by keys. For example, pattern `{:a ?a}` matches `{:a 1}` object by binding value 1 to var ?a.
 
+It is also possible to match for expressions calculated at compile time or at run time. For **compile-time matching**, use the `~` prefix. For example: `~true` matches for the value true, whereas `true` will match for the symbol 'true. For **run-time matching**, use the `@` prefix. You can also use the names of already matched var names in this expression.
+
 ## Examples
 
 ### simple value matching
@@ -110,6 +112,29 @@ Match even numbers.
    ^{:guard even?} ?e :even
    _                  :odd)
 ;; => :even
+```
+
+### compile time expressions
+
+Do you want to match for expressions computed in compile time?
+
+```clojure
+(match 10
+    ~(+ 1 2 3)   :first
+    ~(+ 1 2 3 4) :second
+    _            :unknown)
+;; => :second
+```
+
+### run time expressions
+
+Or the other way: match for expressions computed when matched for. Therefore, you can match for already matched variables.
+
+```clojure
+(match [true false]
+  [?a @(not ?a)] :not-the-same
+  _              :the-same)
+;; => :not-the-same
 ```
 
 ### Pattern compiling

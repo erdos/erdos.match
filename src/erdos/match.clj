@@ -72,6 +72,8 @@
             `([:guard (vector? ~rsn)] ~@(-handle-seq pat rsn)))
           (-list [pat rsn]
             `([:guard (seq? ~rsn)] ~@(-handle-seq pat rsn)))
+          (-deref [pat rsn]
+            `([:== ~pat ~rsn]))
           (-match [pat rsn]
             (cond
              (vector? pat)  (-vec pat rsn)
@@ -81,11 +83,16 @@
              (number? pat)  (-const pat rsn)
              (char? pat)    (-const pat rsn)
              (string? pat)  (-const pat rsn)
-             (list? pat)    (-list pat rsn)
-             :otherwise     (-> "Unexpected pattern: " (str pat)
+             (and (seq? pat)
+                  (= (first pat) 'clojure.core/unquote))
+             (-const (-> pat second eval) rsn)
+             (and (seq? pat)
+                  (= (first pat) 'clojure.core/deref))
+             (-deref (second pat) rsn)
+             (seq? pat)    (-list pat rsn)
+             :otherwise     (-> "Unexpected pattern: " (str pat (list? pat))
                                 IllegalArgumentException. throw)))]
     (-match pat root-sym)))
-
 
 ;; process generated op code.
 (defmulti ^:private opcode (fn [op & _] (first op)))
@@ -191,5 +198,12 @@
   [expr & clauses]
   (apply match-pattern expr clauses))
 
+
+(comment
+  (match-pattern* [true false]
+         [?a @(not ?a)] 1
+         [_ _] 2)
+
+  )
 
 :OK
