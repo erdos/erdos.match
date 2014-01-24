@@ -3,16 +3,6 @@
   "Small library for generating pattern matching code.")
 
 
-(comment
-  "TODO
-  map matching, set matching <?>
-  map matching for pojo/beans
-  vector matching for array access
-  all object - type tag, guard fns
-  lisp code simplification work in progress
-  /TODO")
-
-
 (defn- reverse-series
   "Reverse list of opcodes and change :?= to := or :=="
   [series]
@@ -159,8 +149,10 @@
   [sexp]
   (match0 sexp
           (or & ?ops)
-          `(or ~@(mapcat #(match0 %, (clojure.core/or & ?xs) ?xs,
-                                  (or & ?xs) ?xs, ?x [?x]) ?ops))
+          `(or ~@(mapcat
+                  #(match0 %,
+                           (clojure.core/or & ?xs) ?xs,
+                           (or & ?xs) ?xs, ?x [?x]) ?ops))
 
           (if (= ?a ?x1) ?a1 (if (= ?a ?x2) ?a2 ?a3))
           `(case ~?a, ~?x1 ~?a1, ~?x2 ~?a2, ~?a3)
@@ -197,13 +189,5 @@
   "Use this macro for patterns matching."
   [expr & clauses]
   (apply match-pattern expr clauses))
-
-
-(comment
-  (match-pattern* [true false]
-         [?a @(not ?a)] 1
-         [_ _] 2)
-
-  )
 
 :OK
