@@ -190,4 +190,30 @@
   [expr & clauses]
   (apply match-pattern expr clauses))
 
+
+(defmacro defmatcher [name]
+  `(def ~name
+     (with-meta (constantly nil)
+       {:doc "Automatically generated matcher fn."
+        :matches ()})))
+
+
+(defmacro addmatch
+  [name clause & body]
+  (let [body (if (next body)
+               `(do ~@body) (first body))]
+    `(let [m# (-> ~name meta
+                  :matches
+                  (conj '~body '~clause))
+           f# (list 'fn '[x#]
+                    (concat '(match x#) m#))]
+       (alter-var-root
+        (var ~name)
+        (constantly
+         (with-meta
+           (eval f#)
+           (assoc (meta ~name)
+             :matches m#)))))))
+
+
 :OK
