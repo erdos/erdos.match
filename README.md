@@ -131,6 +131,14 @@ Or the other way: match for expressions computed when matched for. Therefore, yo
 ;; => :not-the-same
 ```
 
+### Matcher methods
+
+Matcher methods are very similar to multimethods. First, you declare a matcher function with `defmatcher`. Second, you add match cases to the matcher using `addmatch`.
+
+`(defmatcher m)` declares a new matcher named `m`.
+
+`(addmatch m pat body)` defines a matching case for matcher named `m`.
+
 ## More examples
 
 ### vectors
