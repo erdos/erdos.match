@@ -1,15 +1,18 @@
 # erdos.match
 
-A simple clojure library for pattern matching.
+_A simple clojure library for pattern matching._
 
-Patterns will be simplified and compiled to clojure code.
+*problem:* With most pattern matching libraries, patterns do not look like real clojure data structures. This makes it difficult to write patterns that match to clojure expressions. With this library, your patterns look like clojure code and data structures with minimal modifications.
+
+Patterns will be simplified and compiled to clojure code at compile time. Using this library, it is also possible to create multimethods with patterns as dispatch values.
+
 
 ## Usage
 
 Copy the match.clj file to your src/erdos folder.
 Include the following in your code:
 ```clojure
-(use '[erdos.match :only (match)])
+(require '[erdos.match :refer (match)])
 ```
 
 ## Syntax
@@ -106,6 +109,23 @@ Match even numbers.
    ^{:guard even?} ?e :even
    _                  :odd)
 ;; => :even
+```
+
+### Optional matching
+
+For optionally matching for items in lists and sequences, use the `:when` meta key with a function value. The `:guard` meta key will be ignored in this case.
+
+**example**
+
+```clojure
+(match '(1 2 3)
+   (1 ^{:when string? } ?s 2 3) true)
+;; => true
+
+(match '(1 "oneandhalf" 2 3)
+   (1 ^{:when string? } ?s 2 3) ?s)
+;; => "oneandhalf"
+
 ```
 
 ### Run-time and compile-time expressions
