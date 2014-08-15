@@ -2,7 +2,6 @@
   erdos.match
   "Small library for generating pattern matching code.")
 
-
 (defn- reverse-series
   "Reverse list of opcodes and change :?= to := or :=="
   [series]
@@ -18,8 +17,21 @@
         (assoc acc :res (cons `[~code ~@args] (:res acc)))))
     {:res nil, :syms #{}} series)))
 
-(defn guard-pred [f & args] `[:guard (~f ~@args)])
-(defn guard= [& ops] (apply guard-pred '= ops))
+;; opcode constructors
+
+(defn- guard-pred [f & args]
+  `[:guard (~f ~@args)])
+
+(defn- guard= [& ops]
+  (apply guard-pred '= ops))
+
+(defn- let?= [sym val]
+  (assert (symbol? sym))
+  [:?= sym val])
+
+(defn- let= [sym val]
+  (assert (symbol? sym))
+  [:= sym val])
 
 (def -match nil)
 (defmulti  -match (fn [pat rsn] (type pat)))
@@ -39,8 +51,8 @@
              [(guard-pred 'instance? t rsn)])
            (if-let [g (-> pat meta :guard)]
              [(guard-pred g rsn)])
-           [[:?= (with-meta pat {}) rsn]])
-   :otherwise [[:guard `(= '~pat ~rsn)]]))
+           [(let?= (with-meta pat {}) rsn)])
+   :otherwise [(guard= `'~pat rsn)]))
 
 ;; map
 (defmethod -match
@@ -51,14 +63,15 @@
            (fn [[k v]]
              (list*
               (guard-pred 'contains? rsn k)
-              `[:= ~l2 (get ~rsn ~k)]
+              (let= l2 `(get ~rsn ~k))
               (-match v l2)))
            (seq pat)))))
 
 ;; lists.
 (defn handle-vec-itm [rsn l2 i k]
   (if-not (= k '_)
-    `([:= ~l2 (nth ~rsn ~i)] ~@(-match k l2))))
+    (list* (let= l2 `(nth ~rsn ~i))
+           (-match k l2))))
 
 
 (defn handle-vec [pat rsn]
@@ -70,28 +83,28 @@
         (conj
          (mapcat (partial handle-vec-itm rsn l2)
                  (range), (-> pat butlast butlast))
-         [:?= (last pat) `(nthrest ~rsn ~(-> pat count dec dec))]
-         [:guard `(>= (count ~rsn) ~(-> pat count dec dec))]))
+         (let?= (last pat) `(nthrest ~rsn ~(-> pat count dec dec)))
+         (guard-pred '>= `(count ~rsn) (-> pat count dec dec))))
       (conj
        (mapcat (partial handle-vec-itm rsn l2)
                (range), (seq pat))
-       [:guard `(= (count ~rsn) ~(count pat))]))))
+       (guard= `(count ~rsn) (count pat))))))
 
 
 (defn handle-seq-itm
   [tmp seq-sym itm-sym p]
   (concat
    [(guard-pred 'seq seq-sym)
-    [:=  itm-sym `(first ~seq-sym)]]
+    (let= itm-sym `(first ~seq-sym))]
    (if (and (symbol? p)
             (-> p meta :when))
-     [[:=  tmp `( ~(-> p meta :when) ~itm-sym)]
+     [(let= tmp `( ~(-> p meta :when) ~itm-sym))
       (if (not= p '_)
-        [:?=  p  `(if ~tmp ~itm-sym)])
-      [:= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym)]]
+        (let?= p `(if ~tmp ~itm-sym)))
+      (let= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym))]
      (concat
       (-match p itm-sym)
-      [[:= seq-sym `(next ~seq-sym)]]))))
+      [(let=  seq-sym `(next ~seq-sym))]))))
 
 
 (defn handle-seq
@@ -104,10 +117,10 @@
                                  seq-sym
                                  (gensym "itm"))
                         (if ende? (butlast (butlast pat)) pat))]
-    (concat
-     [[:= seq-sym `(seq ~rsn)]]
+    (list*
+     (let= seq-sym `(seq ~rsn))
      (if ende?
-       (concat ps [[:?= (last pat) seq-sym]])
+       (concat ps [(let?= (last pat) seq-sym)])
        (concat ps [(guard-pred 'nil? seq-sym)])))))
 
 
