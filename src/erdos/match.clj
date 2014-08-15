@@ -18,70 +18,127 @@
         (assoc acc :res (cons `[~code ~@args] (:res acc)))))
     {:res nil, :syms #{}} series)))
 
+(defn guard-pred [f & args] `[:guard (~f ~@args)])
+(defn guard= [& ops] (apply guard-pred '= ops))
+
+(def -match nil)
+(defmulti  -match (fn [pat rsn] (type pat)))
+
+;; scalar types
+(doseq [t [String Number Boolean
+           nil clojure.lang.Keyword Character]]
+  (defmethod -match t [pat rsn] [(guard= pat rsn)]))
+
+;; symbol
+(defmethod -match
+  clojure.lang.Symbol [pat rsn]
+  (cond
+   (= '_ pat)         []
+   (= \? (-> pat name first))
+   (concat (if-let [t (-> pat meta :tag)]
+             [(guard-pred 'instance? t rsn)])
+           (if-let [g (-> pat meta :guard)]
+             [(guard-pred g rsn)])
+           [[:?= (with-meta pat {}) rsn]])
+   :otherwise [[:guard `(= '~pat ~rsn)]]))
+
+;; map
+(defmethod -match
+  clojure.lang.IPersistentMap [pat rsn]
+  (let [l2 (gensym "m")]
+    (cons (guard-pred 'map? rsn)
+          (mapcat
+           (fn [[k v]]
+             (list*
+              (guard-pred 'contains? rsn k)
+              `[:= ~l2 (get ~rsn ~k)]
+              (-match v l2)))
+           (seq pat)))))
+
+;; lists.
+(defn handle-vec-itm [rsn l2 i k]
+  (if-not (= k '_)
+    `([:= ~l2 (nth ~rsn ~i)] ~@(-match k l2))))
+
+
+(defn handle-vec [pat rsn]
+  (let [l2 (gensym "v")]
+    (if (= '& (last (butlast pat)))
+      (do
+        (assert (symbol? (last pat))
+                "Vararg name must be a symbol.")
+        (conj
+         (mapcat (partial handle-vec-itm rsn l2)
+                 (range), (-> pat butlast butlast))
+         [:?= (last pat) `(nthrest ~rsn ~(-> pat count dec dec))]
+         [:guard `(>= (count ~rsn) ~(-> pat count dec dec))]))
+      (conj
+       (mapcat (partial handle-vec-itm rsn l2)
+               (range), (seq pat))
+       [:guard `(= (count ~rsn) ~(count pat))]))))
+
+
+(defn handle-seq-itm
+  [tmp seq-sym itm-sym p]
+  (concat
+   [(guard-pred 'seq seq-sym)
+    [:=  itm-sym `(first ~seq-sym)]]
+   (if (and (symbol? p)
+            (-> p meta :optional)
+            (-> p meta :guard))
+     [[:=  tmp `( ~(-> p meta :guard) ~itm-sym)]
+      [:=  p  `(if ~tmp ~itm-sym)]
+      [:= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym)]]
+     (concat
+      (-match p itm-sym)
+      [[:= seq-sym `(next ~seq-sym)]]))))
+
+
+(defn handle-seq
+  "Creates code for sequential traversal."
+  [pat rsn]
+  (let [seq-sym (gensym "seq")
+        ende?   (= '& (last (butlast pat)))
+        ps      (mapcat (partial handle-seq-itm
+                                 (gensym "tmp")
+                                 seq-sym
+                                 (gensym "itm"))
+                        (if ende? (butlast (butlast pat)) pat))]
+    (concat
+     [[:= seq-sym `(seq ~rsn)]]
+     (if ende?
+       (concat ps [[:?= (last pat) seq-sym]])
+       (concat ps [(guard-pred 'nil? seq-sym)])))))
+
+
+(defmethod -match
+  clojure.lang.ISeq
+  [pat rsn]
+  (cond
+   (= (first pat) 'clojure.core/unquote)
+   ,,,[(guard= (-> pat second eval) rsn)]
+   (= (first pat) 'clojure.core/deref)
+   ,,,[(guard= (second pat) rsn)]
+   :else
+   ,,,(list*
+       (guard-pred 'seq? rsn)
+       (handle-seq pat rsn))))
+
+
+;; vector
+(defmethod -match
+  clojure.lang.IPersistentVector
+  [pat rsn]
+  (list*
+   (guard-pred 'vector? rsn)
+   (handle-vec pat rsn)))
+
+;; (-match '(?a ?b ?c d) 'jano)
 
 (defn- make-series
   "Analyze pattern object and produce a list of opcodes."
   [pat root-sym]
-  (letfn [(-sym     [pat rsn]
-            (cond
-             (= '_ pat)         []
-             (= \? (-> pat name first))
-             (concat (if-let [t (-> pat meta :tag)]
-                       [[:guard `(instance? ~t ~rsn)]])
-                     (if-let [g (-> pat meta :guard)]
-                       [[:guard `(~g ~rsn)]])
-                     [[:?= (with-meta pat {}) rsn]])
-             :otherwise [[:guard `(= '~pat ~rsn)]]))
-          (-const   [pat rsn]   `([:guard (= ~pat ~rsn)]))
-          (-seq-itm [rsn l2 i k]
-            (if-not (= k '_) `([:= ~l2 (nth ~rsn ~i)] ~@(-match k l2))))
-          (-handle-seq [pat rsn]
-            (let [l2 (gensym "v")]
-              (if (= '& (last (butlast pat)))
-                (do
-                  (assert (symbol? (last pat))
-                          "Vararg name must be a symbol.")
-                  (conj
-                   (mapcat (partial -seq-itm rsn l2)
-                           (range), (-> pat butlast butlast))
-                   [:?= (last pat) `(nthrest ~rsn ~(-> pat count dec dec))]
-                   [:guard `(>= (count ~rsn) ~(-> pat count dec dec))]))
-                (conj
-                 (mapcat (partial -seq-itm rsn l2)
-                         (range), (seq pat))
-                 [:guard `(= (count ~rsn) ~(count pat))]))))
-          (-map [pat rsn]
-            (let [l2 (gensym "m")]
-                (cons [:guard `(map? ~rsn)]
-                 (mapcat
-                  (fn [[k v]] `[[:guard (contains? ~rsn ~k)]
-                               [:= ~l2 (get ~rsn ~k)]
-                               ~@(-match v l2)])
-                  (seq pat)))))
-          (-vec [pat rsn]
-            `([:guard (vector? ~rsn)] ~@(-handle-seq pat rsn)))
-          (-list [pat rsn]
-            `([:guard (seq? ~rsn)] ~@(-handle-seq pat rsn)))
-          (-deref [pat rsn]
-            `([:== ~pat ~rsn]))
-          (-match [pat rsn]
-            (cond
-             (vector? pat)  (-vec pat rsn)
-             (keyword? pat) (-const pat rsn)
-             (map? pat)     (-map pat rsn)
-             (symbol? pat)  (-sym pat rsn)
-             (number? pat)  (-const pat rsn)
-             (char? pat)    (-const pat rsn)
-             (string? pat)  (-const pat rsn)
-             (and (seq? pat)
-                  (= (first pat) 'clojure.core/unquote))
-             (-const (-> pat second eval) rsn)
-             (and (seq? pat)
-                  (= (first pat) 'clojure.core/deref))
-             (-deref (second pat) rsn)
-             (seq? pat)    (-list pat rsn)
-             :otherwise     (-> "Unexpected pattern: " (str pat (list? pat))
-                                IllegalArgumentException. throw)))]
+  (letfn []
     (-match pat root-sym)))
 
 ;; process generated op code.
@@ -92,7 +149,8 @@
   ([[_ n v] then]      `(if (= ~n ~v) ~then))
   ([[_ n v] then else] `(if (= ~n ~v) ~then ~else)))
 (defmethod opcode :guard
-  [[_ e] then]         `(if ~e ~then))
+  ([[_ e] then]         `(if ~e ~then))
+  ([[_ e] then else]    `(if ~e ~then ~else)))
 
 
 (defn- compile-series
@@ -214,6 +272,4 @@
            (eval f#)
            (assoc (meta ~name)
              :matches m#)))))))
-
-
 :OK

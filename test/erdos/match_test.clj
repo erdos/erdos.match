@@ -44,14 +44,6 @@
          '(or 1 (or 2 3))     '(or 1 2 3)
          '(or (or 1) (or 2))  '(or 1 2)
          '(or (or 1 2) 3)     '(or 1 2 3)))
-
-  (testing "simplify (let) forms"
-    (are [x y] (= (simplify-sexp x) (simplify-sexp y))
-        `(let [a 1] :x) `(let [a 1] :x)
-        `(let [a 1] (let [b 2] :x)) `(let [a 1 b 2] :x)
-        `(let [a 1] (let [a 2] :x)) `(let [a 1 a 2] :x)
-        `(let [a 1] (let [a (inc a)] :w)) `(let [a 1 a (inc a)] :w)
-        ))
   (testing "simplify (if) forms to (cond)"))
 
 (deftest test-match-type
@@ -68,6 +60,37 @@
          "a:2" {:a 2}
          :f   {:c 3})))
 
+(defmatcher vagy)
+
+(addmatch vagy _ false)
+(addmatch vagy [true _] true)
+(addmatch vagy [_ true] true)
+
+(comment
+  (match "asd" "a" 1 "asd2" 2 _ 3)
+
+  )
+
+(deftest test-seq-match
+  (testing "basic"
+    (is (match ()
+               nil false,
+               (1) false, (1 2) false
+               () true, :f false, _ :OK)  )
+    (is (match '(1)
+               () false, (2) false, (1 2) false, (1) true, _ false)))
+
+  (testing "var length"
+    (is (match '(1 2 3)
+               (1) false
+               (1 ?2) false
+               (1 2 ?3) true))
+    (is (match '(1 2 3)
+               (1) false
+               (1 & ?xs) true))))
+
+;; (vagy [true true])
+
 (comment
    (match-pattern* "asd"
            ^Integer ?a :int
@@ -79,3 +102,5 @@
           _ :else)
 
   :OK)
+
+(clojure.test/run-tests 'erdos.match-test)
