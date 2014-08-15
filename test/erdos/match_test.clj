@@ -33,6 +33,16 @@
          [[2 1] [3 1]] :second-match,
          [[1 2] [3 4]] :no-match)))
 
+(def ^:private vec1 [1 2 3 4 5])
+
+(deftest test-match-vec
+  (are [-x] (match vec1 -x true)
+       [1 2 3 4 5]
+       [1 2 3 4 ?a] [1 2 ?a 4 5] [1 2 ?a 4 ?b]
+       [1 2 3 4 _]   [1 2 _ 4 5] [_ _ _ _ _]
+       [1 2 3 4 5 & _] [1 2 3 4 5 & ?a]
+       [_ _ ?a ?b & ?cs]))
+
 (deftest test-siplify-sexp
   (testing "merge if's")
   (testing "do not change constats"
@@ -80,27 +90,42 @@
     (is (match '(1)
                () false, (2) false, (1 2) false, (1) true, _ false)))
 
-  (testing "var length"
+  (testing "variable seq length"
     (is (match '(1 2 3)
                (1) false
-               (1 ?2) false
+               (1 ?a) false
+               (1 ?a 3 ?b) false
+               (1 ?a ?b ?c) false
                (1 2 ?3) true))
     (is (match '(1 2 3)
                (1) false
                (1 & ?xs) true))))
 
-;; (vagy [true true])
+(def seq1 '(1 2 3 4 5))
 
-(comment
-   (match-pattern* "asd"
-           ^Integer ?a :int
-           ^String ?a :string
-           ^Long ?a :long)
+(deftest test-seq-varlen
+  (are [-x] (match seq1 -x true)
+       (1 2 3 4 5)
+       (1 2 3 4 5 & ?xs)
+       (1 2 3 4 5 & _)))
 
-   (match {:a 1 :b 2 :c [1 2]}
-          {:a ?a :b ?b :c [1 ?c]} [?a ?b ?c]
-          _ :else)
+(deftest test-seq-optional
+  (are [-x] (match seq1 -x true)
+       (_ _ _ _ _)
+       (?a ?b ?c ?d ?e)
+       (?a ?b _ _ _)
+       (1 2 3 4 ?a)
+       (1 2 3 4 & ?a)
+       (1 2 3 4 & _)
+       (1 2 3 & ?bs)
+       (1 2 3 ^{:when string?} ?a 4 5)
+       (1 2 3 ^{:when number?} ?f 5)
+       (1 2 ^{:when #{3}} _ 4 5)
+       (1 2 ^{:when #{3}} ?a ^{:when #{3}} ?b 4 5)
+       (1 2 ^{:when #{3}} _  ^{:when #{3}} _  4 5)))
 
-  :OK)
+(deftest test-seq-optional-not
+  (are [-x] (match seq1 -x false _ true)
+       (1 2 ^{:when #{3}} _ ^{:when #{4}} _ 4 5)))
 
 (clojure.test/run-tests 'erdos.match-test)

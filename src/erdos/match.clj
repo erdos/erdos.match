@@ -84,10 +84,10 @@
    [(guard-pred 'seq seq-sym)
     [:=  itm-sym `(first ~seq-sym)]]
    (if (and (symbol? p)
-            (-> p meta :optional)
-            (-> p meta :guard))
-     [[:=  tmp `( ~(-> p meta :guard) ~itm-sym)]
-      [:=  p  `(if ~tmp ~itm-sym)]
+            (-> p meta :when))
+     [[:=  tmp `( ~(-> p meta :when) ~itm-sym)]
+      (if (not= p '_)
+        [:?=  p  `(if ~tmp ~itm-sym)])
       [:= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym)]]
      (concat
       (-match p itm-sym)
@@ -151,6 +151,8 @@
 (defmethod opcode :guard
   ([[_ e] then]         `(if ~e ~then))
   ([[_ e] then else]    `(if ~e ~then ~else)))
+(defmethod opcode nil
+  ([_ then] then))
 
 
 (defn- compile-series
