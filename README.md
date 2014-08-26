@@ -111,6 +111,21 @@ Match even numbers.
 ;; => :even
 ```
 
+### Prefix guards
+
+There is a support for the notation of the most commonly used guards. Symbols of the following form: `?fun/varname` will be resolved to `?varname` with the guard function corresponding to `fun`. For the implemented guard functions, please see `erdos.match/symbol-prefix-guards`.
+
+**example**
+
+```clojure
+(defmatcher m)
+(addmatch m ?str/_ "That is a string!")
+(addmatch m ?num/n (str "Your number is: " n))
+
+(m "asdf") ;=> That is a string!
+(m 23)     ;=> Your number is 23
+```
+
 ### Optional matching
 
 For optionally matching for items in lists and sequences, use the `:when` meta key with a function value. The `:guard` meta key will be ignored in this case.

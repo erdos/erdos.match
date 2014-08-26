@@ -41,18 +41,43 @@
            nil clojure.lang.Keyword Character]]
   (defmethod -match t [pat rsn] [(guard= pat rsn)]))
 
+(def symbol-prefix-guards
+  {"str" string?
+   "sym" symbol?
+   "kwd" keyword?
+   "int" integer?
+   "num" number?
+   "flo" float?
+   "cha" char?
+   "vec" vector?
+   "map" map?
+   "set" set?
+   "seq" seq?})
+
 ;; symbol
 (defmethod -match
   clojure.lang.Symbol [pat rsn]
   (cond
-   (= '_ pat)         []
-   (= \? (-> pat name first))
-   (concat (if-let [t (-> pat meta :tag)]
-             [(guard-pred 'instance? t rsn)])
-           (if-let [g (-> pat meta :guard)]
-             [(guard-pred g rsn)])
-           [(let?= (with-meta pat {}) rsn)])
-   :otherwise [(guard= `'~pat rsn)]))
+   (= '_ pat)
+   ,  []
+   (= \? (-> pat str first))
+   ,  (let [g0 (if-let [t (-> pat meta :tag)]
+                 (guard-pred 'instance? t rsn))
+            g1 (if-let [g (-> pat meta :guard)]
+                 (guard-pred g rsn))]
+        (if-let [ns (.getNamespace ^clojure.lang.Symbol pat)]
+          (if-let [g2 (get symbol-prefix-guards (subs ns 1))]
+            (if (= "_" (name pat))
+              [(guard-pred g2 rsn) g0 g1]
+              [(guard-pred g2 rsn) g0 g1
+               (let?= (symbol (str "?" (name pat))) rsn)])
+            (->> ns
+                 (str "No guard for symbol prefix: ")
+                 (new IllegalArgumentException)
+                 (throw)))
+       [g0 g1 (let?= pat rsn)]))
+   :otherwise
+   ,  [(guard= `'~pat rsn)]))
 
 ;; map
 (defmethod -match

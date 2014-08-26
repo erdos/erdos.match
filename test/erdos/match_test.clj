@@ -55,13 +55,34 @@
          '(or (or 1) (or 2))  '(or 1 2)
          '(or (or 1 2) 3)     '(or 1 2 3)))
   (testing "simplify (if) forms to (cond)"))
-
+#_
 (deftest test-match-type
   (testing "basic type matching"
     (are [r x] (= x (match r ^Long ?a :long, ^String ?a :string))
          "Dolorem" :string,
          12        :long,
          'sdf       nil)))
+
+(deftest test-match-symbol-prefix
+  (testing "anonymous prefix guards"
+    (are [r x] (= x (match r
+                           ?int/_ :num
+                           ?str/_ :str
+                           ?set/_ :set))
+         23 :num
+         "lalala" :str
+         #{1 2 3} :set
+         ))
+  (testing "named prefix guards"
+    (are [r x] (= x (match r ?str/a [?a]))
+         "asd" ["asd"]
+         1     nil
+         :k    nil
+         "fff" ["fff"]
+         nil   nil))
+  (testing "bad syntax"
+    (is (thrown? Exception (eval '(match 12 ?dsf/s 1))))))
+
 
 (deftest test-match-map
   (testing "basic match"
@@ -76,10 +97,10 @@
 (addmatch vagy [true _] true)
 (addmatch vagy [_ true] true)
 
-(comment
-  (match "asd" "a" 1 "asd2" 2 _ 3)
-
-  )
+(deftest test-matcher
+  (are [a b] (vagy [a b])
+       true false, false true, true true)
+  (is (false? (vagy [false false]))))
 
 (deftest test-seq-match
   (testing "basic"
