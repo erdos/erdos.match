@@ -52,7 +52,8 @@
    "vec" vector?
    "map" map?
    "set" set?
-   "seq" seq?})
+   "seq" seq?
+   "coll" coll?})
 
 ;; symbol
 (defmethod -match
