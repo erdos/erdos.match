@@ -289,6 +289,12 @@
   [expr & clauses]
   (apply match-pattern expr clauses))
 
+(defmacro match!
+  "Like (match) but throws an
+   IllegalArgumentException when no pattern could be matched."
+  [val & cases]
+  `(match ~val ~@cases
+          ?_else (-> "No pattern is matched" throw IllegalArgumentException.)))
 
 (defmacro defmatcher [name]
   `(def ~name
@@ -313,4 +319,29 @@
            (eval f#)
            (assoc (meta ~name)
              :matches m#)))))))
+
+
+(defmacro matchfn
+  "Returns a function for a given pattern."
+  [& opts]
+  (match
+   opts    (^{:when symbol?} ?name & ?opts)
+   (do
+     (assert (every? seq? ?opts) (str "not seq: " ?opts))
+     `(fn* [a#]
+        (match
+         a# ~@(mapcat (fn [[p & body]]
+                        [p `(do ~@body)]) ?opts))))))<
+
+(defmacro matchfn!
+  "Like (matchfn) but throws an exception when pattern is not matched."
+  [& opts]
+  (let [err `(-> "No pattern could be matched in (matchfn!)"
+                 IllegalArgumentException. throw)]
+    (match opts
+           (^{:guard symbol?} ?name & ?opts)
+           `(matchfn ~?name ~@?opts ?else# ~err)
+           (& ?opts)
+           `(matchfn ~@?opts ?else# ~err))))
+
 :OK
