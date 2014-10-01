@@ -1,6 +1,8 @@
 (ns ^{:author "Janos Erdos"}
   erdos.match
-  "Small library for generating pattern matching code.")
+  "Small library for generating pattern matching code."
+  (:require [clojure.walk])
+  (:gen-class))
 
 (defn- reverse-series
   "Reverse list of opcodes and change :?= to := or :=="
