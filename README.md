@@ -9,11 +9,8 @@ Patterns will be simplified and compiled to clojure code at compile time. Using 
 
 ## Usage
 
-Copy the match.clj file to your src/erdos folder.
-Include the following in your code:
-```clojure
-(require '[erdos.match :refer (match)])
-```
+1. Leiningen dependency: `[erdos.match "0.1.0-SNAPSHOT"]`
+2. Require the namespace: `(require '[erdos.match :refer (match)])`
 
 ## Syntax
 
