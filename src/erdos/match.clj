@@ -296,7 +296,7 @@
    IllegalArgumentException when no pattern could be matched."
   [val & cases]
   `(match ~val ~@cases
-          ?_else (-> "No pattern is matched" throw IllegalArgumentException.)))
+          ?_else# (throw (IllegalArgumentException. "No pattern is matched"))))
 
 (defmacro defmatcher [name]
   `(def ~name
@@ -324,26 +324,27 @@
 
 
 (defmacro matchfn
-  "Returns a function for a given pattern."
+  "Returns a function for a given pattern.
+   An optional leading symbol names the generated fn (allowing self-reference)."
   [& opts]
   (match
    opts    (^{:when symbol?} ?name & ?opts)
    (do
      (assert (every? seq? ?opts) (str "not seq: " ?opts))
-     `(fn* [a#]
+     `(fn* ~@(when ?name [?name]) [a#]
         (match
          a# ~@(mapcat (fn [[p & body]]
-                        [p `(do ~@body)]) ?opts))))))<
+                        [p `(do ~@body)]) ?opts))))))
 
 (defmacro matchfn!
-  "Like (matchfn) but throws an exception when pattern is not matched."
+  "Like (matchfn) but throws an IllegalArgumentException when no pattern is matched."
   [& opts]
-  (let [err `(-> "No pattern could be matched in (matchfn!)"
-                 IllegalArgumentException. throw)]
+  (let [err `(throw (IllegalArgumentException.
+                     "No pattern could be matched in (matchfn!)"))]
     (match opts
            (^{:guard symbol?} ?name & ?opts)
-           `(matchfn ~?name ~@?opts ?else# ~err)
+           `(matchfn ~?name ~@?opts (?else# ~err))
            (& ?opts)
-           `(matchfn ~@?opts ?else# ~err))))
+           `(matchfn ~@?opts (?else# ~err)))))
 
 :OK

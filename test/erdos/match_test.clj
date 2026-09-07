@@ -149,4 +149,34 @@
   (are [-x] (match seq1 -x false _ true)
        (1 2 ^{:when #{3}} _ ^{:when #{4}} _ 4 5)))
 
+(deftest test-match!
+  (testing "matches like (match) when a clause fits"
+    (is (= :ok (match! 6 6 :ok, _ :other)))
+    (is (= :other (match! 7 6 :ok, _ :other))))
+  (testing "throws IllegalArgumentException when nothing matches"
+    (is (thrown-with-msg? IllegalArgumentException #"No pattern is matched"
+                          (match! 5 6 :six)))))
+
+(deftest test-matchfn
+  (testing "anonymous form"
+    (let [f (matchfn (1 :one) (2 :two))]
+      (is (= :one (f 1)))
+      (is (= :two (f 2)))
+      (is (nil? (f 3)))))
+  (testing "named form still dispatches"
+    (let [f (matchfn selfnamed (1 :one) (2 :two))]
+      (is (= :two (f 2)))))
+  (testing "named form embeds the name in the generated fn"
+    (is (re-find #"recur.name" (.getName (class (matchfn recur-name (_ :x))))))))
+
+(deftest test-matchfn!
+  (testing "anonymous form throws when nothing matches"
+    (let [f (matchfn! (1 :one) (2 :two))]
+      (is (= :two (f 2)))
+      (is (thrown-with-msg? IllegalArgumentException #"matchfn!" (f 9)))))
+  (testing "named form throws when nothing matches"
+    (let [f (matchfn! nf (1 :one))]
+      (is (= :one (f 1)))
+      (is (thrown? IllegalArgumentException (f 9))))))
+
 (clojure.test/run-tests 'erdos.match-test)
