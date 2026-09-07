@@ -28,11 +28,11 @@
   (apply guard-pred '= ops))
 
 (defn- let?= [sym val]
-  (assert (symbol? sym))
+  (assert (symbol? sym) (str "binding target must be a symbol: " (pr-str sym)))
   [:?= sym val])
 
 (defn- let= [sym val]
-  (assert (symbol? sym))
+  (assert (symbol? sym) (str "binding target must be a symbol: " (pr-str sym)))
   [:= sym val])
 
 (def -match nil)
@@ -96,11 +96,13 @@
               (guard-pred 'contains? rsn k)
               (let= l2 `(get ~rsn ~k))
               (-match v l2)))
-           (seq pat)))))
+           ;; stable order so codegen is reproducible for unsorted maps
+           (sort-by (comp pr-str key) pat)))))
 
 ;; lists.
 (defn handle-vec-itm [rsn l2 i k]
-  (if-not (= k '_)
+  (if (= k '_)
+    ()
     (list* (let= l2 `(nth ~rsn ~i))
            (-match k l2))))
 
@@ -185,8 +187,7 @@
 (defn- make-series
   "Analyze pattern object and produce a list of opcodes."
   [pat root-sym]
-  (letfn []
-    (-match pat root-sym)))
+  (-match pat root-sym))
 
 ;; process generated op code.
 (defmulti ^:private opcode (fn [op & _] (first op)))
