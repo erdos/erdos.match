@@ -44,18 +44,21 @@
   (defmethod -match t [pat rsn] [(guard= pat rsn)]))
 
 (def symbol-prefix-guards
-  {"str" string?
-   "sym" symbol?
-   "kwd" keyword?
-   "int" integer?
-   "num" number?
-   "flo" float?
-   "cha" char?
-   "vec" vector?
-   "map" map?
-   "set" set?
-   "seq" seq?
-   "coll" coll?})
+  "Maps a `?<prefix>/...` symbol prefix to the predicate its guard calls.
+   Values are resolved symbols, not fn objects, so the generated code stays
+   printable and serialisable (see match-pattern*)."
+  {"str" `string?
+   "sym" `symbol?
+   "kwd" `keyword?
+   "int" `integer?
+   "num" `number?
+   "flo" `float?
+   "cha" `char?
+   "vec" `vector?
+   "map" `map?
+   "set" `set?
+   "seq" `seq?
+   "coll" `coll?})
 
 ;; symbol
 (defmethod -match
@@ -233,6 +236,31 @@
    `(or ~a ~b)))
 
 
+(defn- merge-clauses
+  "Combine compiled clause forms into one expression.
+
+   Equivalent to (reduce merge-sexp cls), but keeps the growing disjunction
+   in a vector and only ever merges the incoming clause against the previous
+   element, so building the result is linear in the clause count instead of
+   re-consing an ever-longer (or ...) on every step."
+  [cls]
+  (let [merged (reduce
+                (fn [acc c]
+                  (if (empty? acc)
+                    (conj acc c)
+                    (let [m (merge-sexp (peek acc) c)]
+                      (if (and (seq? m)
+                               (= 'clojure.core/or (first m))
+                               (= 2 (count (rest m))))
+                        (conj acc c)           ;; nothing merged structurally
+                        (conj (pop acc) m))))) ;; c folded into previous
+                [] cls)]
+    (condp = (count merged)
+      0 nil
+      1 (first merged)
+      `(or ~@merged))))
+
+
 (defn- match0-pattern
   "Returns the generated code for the clauses"
   [value & clauses]
@@ -243,7 +271,7 @@
         cls  (map (fn [[p c]] (compile-series p [c])) cls)]
     `(first
       (let [~vsym ~value]
-        ~(reduce merge-sexp cls)))))
+        ~(merge-clauses cls)))))
 
 
 (defmacro match0 [value & clauses]
@@ -275,7 +303,12 @@
 
 
 (defn simplify-sexp
-  "Recursively simplify sexp."
+  "Recursively simplify sexp.
+
+   Compile-time only: postwalk runs simplify-sexp-item at every node, and
+   each call expands several match0 forms, so cost is roughly O(nodes *
+   rules). Fine for hand-written match forms; pathological only for machine
+   generated ones with thousands of clauses."
   [sexp] (clojure.walk/postwalk simplify-sexp-item sexp))
 
 
@@ -312,6 +345,11 @@
 
 
 (defmacro addmatch
+  "Append a clause to a (defmatcher) matcher and recompile it.
+
+   Each call re-(eval)s the whole accumulated (match ...) form, so building
+   a matcher with n clauses costs O(n^2) compilation. Fine for the handful
+   of clauses a matcher normally has; do not drive it from a loop."
   [name clause & body]
   (let [body (if (next body)
                `(do ~@body) (first body))]
