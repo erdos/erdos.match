@@ -149,6 +149,12 @@
   (are [-x] (match seq1 -x false _ true)
        (1 2 ^{:when #{3}} _ ^{:when #{4}} _ 4 5)))
 
+(deftest test-when-guard-requires-symbol
+  (testing ":when meta on a non-symbol pattern is rejected, not silently ignored"
+    (is (thrown-with-msg? Exception #":when guard is only supported on symbol"
+                          (eval '(erdos.match/match '(1 2 3)
+                                   (1 ^{:when number?} [2] 3) true))))))
+
 (deftest test-match!
   (testing "matches like (match) when a clause fits"
     (is (= :ok (match! 6 6 :ok, _ :other)))

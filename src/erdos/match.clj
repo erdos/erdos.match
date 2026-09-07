@@ -121,6 +121,9 @@
 
 (defn handle-seq-itm
   [tmp seq-sym itm-sym p]
+  (when (and (-> p meta :when) (not (symbol? p)))
+    (throw (IllegalArgumentException.
+            (str ":when guard is only supported on symbol patterns: " (pr-str p)))))
   (concat
    [(guard-pred 'seq seq-sym)
     (let= itm-sym `(first ~seq-sym))]
@@ -212,8 +215,10 @@
 
    (when (and (= 'if (first a) (first b))
               (= (second a) (second b)))
-     (assert (nil? (get a 3)))
-     (assert (nil? (get b 3)))
+     ;; get on a seq by index is always nil; nth with a not-found is the
+     ;; real "does this if have an else branch?" check.
+     (assert (nil? (nth a 3 nil)))
+     (assert (nil? (nth b 3 nil)))
      `(if ~(second a) ~(merge-sexp (nth a 2) (nth b 2))))
 
    (when (= 'clojure.core/or (first a) (first b))
@@ -255,11 +260,12 @@
                            (clojure.core/or & ?xs) ?xs,
                            (or & ?xs) ?xs, ?x [?x]) ?ops))
 
-          (if (= ?a ?x1) ?a1 (if (= ?a ?x2) ?a2 ?a3))
-          `(case ~?a, ~?x1 ~?a1, ~?x2 ~?a2, ~?a3)
-
-          (if (= ?a ?x1) ?a1 (clojure.core/case ?a & ?as))
-          `(case ~?a, ~?x1 ~?a1, ~@?as)
+          ;; NOTE: an (if (= x c1) .. (if (= x c2) ..)) -> (case x ..) rewrite
+          ;; used to live here. It is unsound: `case` does not evaluate its
+          ;; test constants, so it only matches `=` when every constant is a
+          ;; self-evaluating literal. The opcode compiler never emits that
+          ;; shape today, so the rule was dead; reinstating it needs a guard
+          ;; that each constant is a literal (and that they are distinct).
 
           (clojure.core/let [?k ?v]
             (clojure.core/let [& ?as] ?body))
