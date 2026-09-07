@@ -149,11 +149,24 @@
   (are [-x] (match seq1 -x false _ true)
        (1 2 ^{:when #{3}} _ ^{:when #{4}} _ 4 5)))
 
+(defn- error-messages
+  "Every message on the cause chain of the throwable raised by (thunk)."
+  [thunk]
+  (try (thunk) nil
+       (catch Throwable e
+         (->> (iterate (fn [^Throwable t] (when t (.getCause t))) e)
+              (take-while identity)
+              (map #(.getMessage ^Throwable %))))))
+
 (deftest test-when-guard-requires-symbol
   (testing ":when meta on a non-symbol pattern is rejected, not silently ignored"
-    (is (thrown-with-msg? Exception #":when guard is only supported on symbol"
-                          (eval '(erdos.match/match '(1 2 3)
-                                   (1 ^{:when number?} [2] 3) true))))))
+    (let [msgs (error-messages
+                #(macroexpand-1
+                  (list 'erdos.match/match nil
+                        (list 1 (with-meta ['x] {:when number?}) 3)
+                        true)))]
+      (is (some #(and % (re-find #":when guard is only supported on symbol" %))
+                msgs)))))
 
 (deftest test-match!
   (testing "matches like (match) when a clause fits"
@@ -184,5 +197,3 @@
     (let [f (matchfn! nf (1 :one))]
       (is (= :one (f 1)))
       (is (thrown? IllegalArgumentException (f 9))))))
-
-(clojure.test/run-tests 'erdos.match-test)

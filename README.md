@@ -9,8 +9,16 @@ Patterns will be simplified and compiled to clojure code at compile time. Using 
 
 ## Usage
 
-1. Leiningen dependency: `[erdos.match "0.1.0-SNAPSHOT"]`
+1. Add the dependency:
+   - Leiningen: `[erdos.match "0.1.0-SNAPSHOT"]`
+   - tools.deps (`deps.edn`): `io.github.erdos/erdos.match {:git/sha "..."}`
 2. Require the namespace: `(require '[erdos.match :refer (match)])`
+
+### Running the tests
+
+- Leiningen: `lein test`
+- Clojure CLI: `clojure -M:test` (add `:1.12` to run against a current
+  Clojure, e.g. `clojure -M:1.12:test`)
 
 ## Syntax
 

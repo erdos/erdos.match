@@ -1,0 +1,21 @@
+;; Clojure CLI / tools.deps configuration.
+;;
+;;   clojure -M:test           run the test suite
+;;   clojure -M:1.12:test      run it against a current Clojure
+;;   clojure -X:deps tree      inspect the dependency tree
+;;
+;; The Leiningen project.clj is still the source of truth for packaging and
+;; for the supported Clojure floor (1.5.1); keep the two in sync.
+
+{:paths ["src"]
+
+ :deps {org.clojure/clojure {:mvn/version "1.5.1"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+   :main-opts   ["-e" "(require 'clojure.test 'erdos.match-test) (System/exit (if (clojure.test/successful? (clojure.test/run-tests 'erdos.match-test)) 0 1))"]}
+
+  ;; Override just the Clojure version, e.g. `clojure -M:1.12:test`.
+  :1.12
+  {:override-deps {org.clojure/clojure {:mvn/version "1.12.0"}}}}}

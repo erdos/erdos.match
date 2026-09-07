@@ -1,6 +1,7 @@
 /target
 /lib
 /classes
+/.cpcache
 
 pom.xml
 pom.xml.asc
