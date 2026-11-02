@@ -216,8 +216,8 @@
 
    (when (and (= 'if (first a) (first b))
               (= (second a) (second b)))
-     (assert (nil? (get a 3)))
-     (assert (nil? (get b 3)))
+     (assert (nil? (nth a 3 nil)))
+     (assert (nil? (nth b 3 nil)))
      `(if ~(second a) ~(merge-sexp (nth a 2) (nth b 2))))
 
    (when (= 'clojure.core/or (first a) (first b))
