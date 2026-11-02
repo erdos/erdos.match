@@ -133,6 +133,15 @@
     (is (= 3 (f [1 2])))
     (is (thrown? IllegalArgumentException (f [])))))
 
+(deftest test-user-code-not-simplified
+  (testing "nested ifs in body are not turned into case"
+    (let [y 2]
+      (is (= :a (match 2 ?x (if (= ?x y) :a (if (= ?x 3) :b :c)))))))
+  (testing "quoted data in body is kept"
+    (is (= '(or (or 1) 2) (match 1 _ '(or (or 1) 2)))))
+  (testing "matched expression is kept"
+    (is (= '(or (or 1) 2) (match '(or (or 1) 2) ?x ?x)))))
+
 (def seq1 '(1 2 3 4 5))
 
 (deftest test-seq-varlen

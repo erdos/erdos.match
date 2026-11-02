@@ -276,8 +276,14 @@
 (defn match-pattern
   "Produce clj code for pattern matching"
   [expr & clauses]
-  (simplify-sexp
-   (apply match0-pattern expr clauses)))
+  (assert (-> clauses count even?))
+  (let [codes (cons expr (take-nth 2 (rest clauses)))
+        syms  (map (fn [_] (gensym "code")) codes)]
+    (clojure.walk/postwalk-replace
+     (zipmap syms codes)
+     (simplify-sexp
+      (apply match0-pattern (first syms)
+             (interleave (take-nth 2 clauses) (rest syms)))))))
 
 
 (defmacro match-pattern*
