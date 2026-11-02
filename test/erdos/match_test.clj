@@ -122,6 +122,11 @@
                (1) false
                (1 & ?xs) true))))
 
+(deftest test-match!
+  (is (= :two (match! 2, 1 :one, 2 :two)))
+  (is (nil? (match! 2, 2 nil)))
+  (is (thrown? IllegalArgumentException (match! 3, 1 :one, 2 :two))))
+
 (def seq1 '(1 2 3 4 5))
 
 (deftest test-seq-varlen

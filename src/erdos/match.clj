@@ -296,7 +296,7 @@
    IllegalArgumentException when no pattern could be matched."
   [val & cases]
   `(match ~val ~@cases
-          ?_else (-> "No pattern is matched" throw IllegalArgumentException.)))
+          ?else# (-> "No pattern is matched" IllegalArgumentException. throw)))
 
 (defmacro defmatcher [name]
   `(def ~name
