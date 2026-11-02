@@ -342,8 +342,8 @@
                  IllegalArgumentException. throw)]
     (match opts
            (^{:guard symbol?} ?name & ?opts)
-           `(matchfn ~?name ~@?opts ?else# ~err)
+           `(matchfn ~?name ~@?opts (?else# ~err))
            (& ?opts)
-           `(matchfn ~@?opts ?else# ~err))))
+           `(matchfn ~@?opts (?else# ~err)))))
 
 :OK

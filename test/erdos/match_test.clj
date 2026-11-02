@@ -127,6 +127,12 @@
   (is (nil? (match! 2, 2 nil)))
   (is (thrown? IllegalArgumentException (match! 3, 1 :one, 2 :two))))
 
+(deftest test-matchfn!
+  (let [f (matchfn! ([?a] ?a) ([?a ?b] (+ ?a ?b)))]
+    (is (= 1 (f [1])))
+    (is (= 3 (f [1 2])))
+    (is (thrown? IllegalArgumentException (f [])))))
+
 (def seq1 '(1 2 3 4 5))
 
 (deftest test-seq-varlen
