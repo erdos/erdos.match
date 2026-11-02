@@ -180,6 +180,18 @@
        '()        :no)
   (is (= :ok (match () (^{:when pos?} _) :ok))))
 
+(deftest test-seq-optional-symbols
+  (testing "literal symbol"
+    (are [x y] (= y (match x (^{:when symbol?} foo 1) :ok _ :no))
+         '(foo 1) :ok
+         '(1)     :ok
+         '(bar 1) :no))
+  (testing "symbol prefix"
+    (are [x y] (= y (match x (^{:when number?} ?int/x & _) [:ok ?x] _ :no))
+         '(1 2)   [:ok 1]
+         '(1.5 2) [:ok nil]
+         '()      [:ok nil])))
+
 (deftest test-seq-optional-not
   (are [-x] (match seq1 -x false _ true)
        (1 2 ^{:when #{3}} _ ^{:when #{4}} _ 4 5)))

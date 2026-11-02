@@ -127,10 +127,13 @@
    [(let= itm-sym `(first ~seq-sym))]
    (if (and (symbol? p)
             (-> p meta :when))
-     [(let= tmp `(and ~seq-sym (~(-> p meta :when) ~itm-sym)))
-      (if (not= p '_)
-        (let?= p `(if ~tmp ~itm-sym)))
-      (let= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym))]
+     (let [ops (remove nil? (-match p itm-sym))]
+       (concat
+        [(let= tmp `(and ~seq-sym (~(-> p meta :when) ~itm-sym)
+                         ~@(for [[code e] ops :when (= code :guard)] e)))]
+        (for [[code s v] ops :when (= code :?=)]
+          (let?= s `(if ~tmp ~v)))
+        [(let= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym))]))
      (concat
       (-match p itm-sym)
       [(let=  seq-sym `(next ~seq-sym))]))))
