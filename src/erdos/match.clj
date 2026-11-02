@@ -336,7 +336,7 @@
    opts    (^{:when symbol?} ?name & ?opts)
    (do
      (assert (every? seq? ?opts) (str "not seq: " ?opts))
-     `(fn* [a#]
+     `(fn* ~@(if ?name [?name]) [a#]
         (match
          a# ~@(mapcat (fn [[p & body]]
                         [p `(do ~@body)]) ?opts))))))<

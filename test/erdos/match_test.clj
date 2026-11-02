@@ -142,6 +142,13 @@
   (testing "matched expression is kept"
     (is (= '(or (or 1) 2) (match '(or (or 1) 2) ?x ?x)))))
 
+(deftest test-matchfn-name
+  (let [f (matchfn sum ([] 0) ([?x & ?xs] (+ ?x (sum (vec ?xs)))))]
+    (is (= 6 (f [1 2 3]))))
+  (let [f (matchfn! sum ([] 0) ([?x & ?xs] (+ ?x (sum (vec ?xs)))))]
+    (is (= 6 (f [1 2 3])))
+    (is (thrown? IllegalArgumentException (f :x)))))
+
 (def seq1 '(1 2 3 4 5))
 
 (deftest test-seq-varlen
