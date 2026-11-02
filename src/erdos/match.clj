@@ -90,8 +90,8 @@
           (mapcat
            (fn [[k v]]
              (list*
-              (guard-pred 'contains? rsn k)
-              (let= l2 `(get ~rsn ~k))
+              (guard-pred 'contains? rsn `'~k)
+              (let= l2 `(get ~rsn '~k))
               (-match v l2)))
            (seq pat)))))
 

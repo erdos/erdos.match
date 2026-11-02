@@ -91,6 +91,12 @@
          "a:2" {:a 2}
          :f   {:c 3})))
 
+(deftest test-match-map-keys
+  (are [x y] (= y (match x {k ?v} [:sym ?v], {(1 2) ?v} [:list ?v], _ :f))
+       {'k 1}      [:sym 1]
+       {'(1 2) 2}  [:list 2]
+       {:k 3}      :f))
+
 (defmatcher vagy)
 
 (addmatch vagy _ false)
