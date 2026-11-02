@@ -122,11 +122,12 @@
 (defn handle-seq-itm
   [tmp seq-sym itm-sym p]
   (concat
-   [(guard-pred 'seq seq-sym)
-    (let= itm-sym `(first ~seq-sym))]
+   (if-not (and (symbol? p) (-> p meta :when))
+     [(guard-pred 'seq seq-sym)])
+   [(let= itm-sym `(first ~seq-sym))]
    (if (and (symbol? p)
             (-> p meta :when))
-     [(let= tmp `( ~(-> p meta :when) ~itm-sym))
+     [(let= tmp `(and ~seq-sym (~(-> p meta :when) ~itm-sym)))
       (if (not= p '_)
         (let?= p `(if ~tmp ~itm-sym)))
       (let= seq-sym `(if ~tmp (next ~seq-sym) ~seq-sym))]

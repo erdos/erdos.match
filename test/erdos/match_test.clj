@@ -172,6 +172,14 @@
        (1 2 ^{:when #{3}} ?a ^{:when #{3}} ?b 4 5)
        (1 2 ^{:when #{3}} _  ^{:when #{3}} _  4 5)))
 
+(deftest test-seq-optional-end
+  (are [x y] (= y (match x (1 ^{:when string?} ?a) [:ok ?a] _ :no))
+       '(1)       [:ok nil]
+       '(1 "s")   [:ok "s"]
+       '(1 2)     :no
+       '()        :no)
+  (is (= :ok (match () (^{:when pos?} _) :ok))))
+
 (deftest test-seq-optional-not
   (are [-x] (match seq1 -x false _ true)
        (1 2 ^{:when #{3}} _ ^{:when #{4}} _ 4 5)))
